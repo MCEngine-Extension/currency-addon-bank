@@ -6,6 +6,7 @@ import io.github.mcengine.api.mcengine.extension.addon.MCEngineAddOnLogger;
 import io.github.mcengine.common.currency.MCEngineCurrencyCommon;
 import io.github.mcengine.extension.addon.currency.bank.command.BankCommand;
 import io.github.mcengine.extension.addon.currency.bank.database.BankDB;
+import io.github.mcengine.extension.addon.currency.bank.scheduler.BankInterestScheduler;
 import io.github.mcengine.extension.addon.currency.bank.tabcompleter.BankTabCompleter;
 import io.github.mcengine.extension.addon.currency.bank.util.BankCommandUtil;
 import io.github.mcengine.extension.addon.currency.bank.util.InterestConfigGenerator;
@@ -83,6 +84,9 @@ public class Bank implements IMCEngineCurrencyAddOn {
             logger.warning("Failed to register bank command: " + e.getMessage());
             e.printStackTrace();
         }
+
+        // Start the cron-based interest scheduler
+        new BankInterestScheduler(plugin, logger);
 
         // Check for plugin updates
         MCEngineApi.checkUpdate(

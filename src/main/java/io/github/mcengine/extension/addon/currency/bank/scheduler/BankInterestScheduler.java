@@ -59,6 +59,7 @@ public class BankInterestScheduler {
     public BankInterestScheduler(Plugin plugin, MCEngineAddOnLogger logger) {
         this.plugin = plugin;
         this.logger = logger;
+        loadAndScheduleAll();
     }
 
     /**
