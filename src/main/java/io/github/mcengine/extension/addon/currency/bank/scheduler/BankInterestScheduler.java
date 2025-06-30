@@ -31,16 +31,6 @@ public class BankInterestScheduler {
     private static final String CONFIG_PATH = "configs/addons/MCEngineBank/";
 
     /**
-     * The plugin instance that owns this scheduler.
-     */
-    private final Plugin plugin;
-
-    /**
-     * The logger instance used for output.
-     */
-    private final MCEngineAddOnLogger logger;
-
-    /**
      * The cron parser used to interpret schedule expressions.
      */
     private static final CronParser PARSER = new CronParser(CronDefinitionBuilder.instanceDefinitionFor(com.cronutils.model.CronType.UNIX));
@@ -57,15 +47,13 @@ public class BankInterestScheduler {
      * @param logger the logger instance
      */
     public BankInterestScheduler(Plugin plugin, MCEngineAddOnLogger logger) {
-        this.plugin = plugin;
-        this.logger = logger;
-        loadAndScheduleAll();
+        loadAndScheduleAll(plugin, logger);
     }
 
     /**
      * Loads all interest configuration files and schedules them as asynchronous cron tasks.
      */
-    public void loadAndScheduleAll() {
+    public void loadAndScheduleAll(Plugin plugin, MCEngineAddOnLogger logger) {
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
             File baseDir = new File(plugin.getDataFolder(), CONFIG_PATH);
             if (!baseDir.exists()) {
@@ -78,7 +66,7 @@ public class BankInterestScheduler {
             findYamlFiles(baseDir, configFiles);
 
             for (File file : configFiles) {
-                scheduleTaskForFile(file);
+                scheduleTaskForFile(plugin, logger, file);
             }
         });
     }
@@ -106,7 +94,7 @@ public class BankInterestScheduler {
      *
      * @param file the YAML configuration file
      */
-    private void scheduleTaskForFile(File file) {
+    private void scheduleTaskForFile(Plugin plugin, MCEngineAddOnLogger logger, File file) {
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
             try (FileInputStream fis = new FileInputStream(file)) {
                 Map<String, Object> root = yaml.load(fis);
@@ -120,7 +108,7 @@ public class BankInterestScheduler {
                 long delay = getInitialDelayMillis(cronExpr);
                 long period = getFixedPeriodMillis(cronExpr);
 
-                Bukkit.getScheduler().runTaskTimerAsynchronously(plugin, () -> runInterestTask(file), delay / 50L, period / 50L);
+                Bukkit.getScheduler().runTaskTimerAsynchronously(plugin, () -> runInterestTask(logger, file), delay / 50L, period / 50L);
                 logger.info("Scheduled interest for " + file.getName());
 
             } catch (Exception e) {
@@ -135,7 +123,7 @@ public class BankInterestScheduler {
      *
      * @param file the YAML config file
      */
-    private void runInterestTask(File file) {
+    private void runInterestTask(MCEngineAddOnLogger logger, File file) {
         try (FileInputStream fis = new FileInputStream(file)) {
             Map<String, Object> config = yaml.load(fis);
             Map<String, Map<String, Object>> interestMap = (Map<String, Map<String, Object>>) config.get("interest");
