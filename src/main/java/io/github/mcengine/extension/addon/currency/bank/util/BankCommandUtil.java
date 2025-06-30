@@ -1,5 +1,7 @@
 package io.github.mcengine.extension.addon.currency.bank.util;
 
+import io.github.mcengine.api.mcengine.extension.addon.MCEngineAddOnLogger;
+
 import org.bukkit.entity.Player;
 
 /**
@@ -7,6 +9,10 @@ import org.bukkit.entity.Player;
  * Provides shared logic for parsing and validating user input.
  */
 public class BankCommandUtil {
+
+    public static void check(MCEngineAddOnLogger logger) {
+        logger.info("Class: BankCommandUtil is loadded.");
+    }
 
     /**
      * Parses and validates a numeric string input for amount commands.

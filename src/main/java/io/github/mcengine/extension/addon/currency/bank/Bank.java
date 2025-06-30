@@ -7,6 +7,7 @@ import io.github.mcengine.common.currency.MCEngineCurrencyCommon;
 import io.github.mcengine.extension.addon.currency.bank.command.BankCommand;
 import io.github.mcengine.extension.addon.currency.bank.database.BankDB;
 import io.github.mcengine.extension.addon.currency.bank.tabcompleter.BankTabCompleter;
+import io.github.mcengine.extension.addon.currency.bank.util.BankCommandUtil;
 
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
@@ -36,6 +37,8 @@ public class Bank implements IMCEngineCurrencyAddOn {
     @Override
     public void onLoad(Plugin plugin) {
         MCEngineAddOnLogger logger = new MCEngineAddOnLogger(plugin, "MCEngineBank");
+
+        BankCommandUtil.check(logger);
 
         // Create required database tables
         Connection conn = MCEngineCurrencyCommon.getApi().getDBConnection();
