@@ -19,6 +19,9 @@ import java.sql.Connection;
  *     <li>/bank withdraw &lt;coinType&gt; &lt;amount&gt;</li>
  *     <li>/bank balance &lt;coinType&gt;</li>
  * </ul>
+ * <p>
+ * This class ensures that only valid coin types are accepted directly in the method logic,
+ * without storing valid coin types in memory.
  */
 public class BankCommand implements CommandExecutor {
 
@@ -45,6 +48,15 @@ public class BankCommand implements CommandExecutor {
 
         String action = args[0].toLowerCase();
         String coinType = args[1].toLowerCase();
+
+        if (!coinType.equals("coin") &&
+            !coinType.equals("copper") &&
+            !coinType.equals("silver") &&
+            !coinType.equals("gold")) {
+            player.sendMessage("§cInvalid coin type. Valid types: coin, copper, silver, gold.");
+            return true;
+        }
+
         Connection conn = MCEngineCurrencyCommon.getApi().getDBConnection();
 
         switch (action) {
