@@ -2,13 +2,9 @@ package io.github.mcengine.extension.addon.currency.bank.database;
 
 import io.github.mcengine.api.mcengine.extension.addon.MCEngineAddOnLogger;
 import io.github.mcengine.common.currency.MCEngineCurrencyCommon;
-import org.bukkit.entity.Player;
+import org.bukkit.OfflinePlayer;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
 
 /**
  * Utility class for initializing and interacting with the MCEngine Bank database system.
@@ -16,7 +12,8 @@ import java.sql.Statement;
  * Responsibilities:
  * <ul>
  *     <li>Create required bank and history tables</li>
- *     <li>Deposit and withdraw currency with confirmation</li>
+ *     <li>Deposit and withdraw currency for both online and offline players</li>
+ *     <li>Fetch bank balances</li>
  * </ul>
  */
 public class BankDB {
@@ -63,14 +60,15 @@ public class BankDB {
     }
 
     /**
-     * Deposits a specified amount of currency from the player's wallet to their bank account.
+     * Deposits a specified amount of currency to a player's bank account.
+     * This works for both online and offline players.
      *
      * @param conn     The database connection.
-     * @param player   The player making the deposit.
+     * @param player   The player (can be offline).
      * @param coinType The type of coin to deposit (e.g., "coin", "copper").
      * @param amount   The amount to deposit.
      */
-    public static void deposit(Connection conn, Player player, String coinType, double amount) {
+    public static void deposit(Connection conn, OfflinePlayer player, String coinType, double amount) {
         String uuid = player.getUniqueId().toString();
         MCEngineCurrencyCommon.getApi().minusCoin(player.getUniqueId(), coinType, amount);
 
@@ -102,29 +100,39 @@ public class BankDB {
 
             try (PreparedStatement log = conn.prepareStatement(
                     "INSERT INTO currency_bank_history (uuid, change_amount, change_type, coin_type, note) " +
-                            "VALUES (?, ?, 'deposit', ?, 'Player deposit');")) {
+                            "VALUES (?, ?, 'deposit', ?, 'System/Interest/Deposit');")) {
                 log.setString(1, uuid);
                 log.setDouble(2, amount);
                 log.setString(3, coinType);
                 log.executeUpdate();
             }
 
-            player.sendMessage("§aDeposited " + amount + " " + coinType + " into your bank.");
+            if (player.isOnline()) {
+                player.getPlayer().sendMessage("§aDeposited " + amount + " " + coinType + " into your bank.");
+            }
+
         } catch (SQLException e) {
             e.printStackTrace();
-            player.sendMessage("§cError occurred while depositing funds.");
+            if (player.isOnline()) {
+                player.getPlayer().sendMessage("§cError occurred while depositing funds.");
+            }
         }
     }
 
     /**
-     * Withdraws a specified amount of currency from the player's bank account to their wallet.
+     * Withdraws a specified amount of currency from a player's bank account to their wallet.
+     * Only works for online players.
      *
      * @param conn     The database connection.
-     * @param player   The player making the withdrawal.
+     * @param player   The player (must be online).
      * @param coinType The type of coin to withdraw (e.g., "coin", "copper").
      * @param amount   The amount to withdraw.
      */
-    public static void withdraw(Connection conn, Player player, String coinType, double amount) {
+    public static void withdraw(Connection conn, OfflinePlayer player, String coinType, double amount) {
+        if (!player.isOnline() || player.getPlayer() == null) {
+            return;
+        }
+
         String uuid = player.getUniqueId().toString();
 
         try (PreparedStatement stmt = conn.prepareStatement(
@@ -133,13 +141,13 @@ public class BankDB {
 
             try (ResultSet rs = stmt.executeQuery()) {
                 if (!rs.next()) {
-                    player.sendMessage("§cYou do not have a bank account.");
+                    player.getPlayer().sendMessage("§cYou do not have a bank account.");
                     return;
                 }
 
                 double balance = rs.getDouble("balance");
                 if (balance < amount) {
-                    player.sendMessage("§cYou do not have enough funds in your bank.");
+                    player.getPlayer().sendMessage("§cYou do not have enough funds in your bank.");
                     return;
                 }
 
@@ -160,11 +168,11 @@ public class BankDB {
                 }
 
                 MCEngineCurrencyCommon.getApi().addCoin(player.getUniqueId(), coinType, amount);
-                player.sendMessage("§aWithdrew " + amount + " " + coinType + " from your bank.");
+                player.getPlayer().sendMessage("§aWithdrew " + amount + " " + coinType + " from your bank.");
             }
         } catch (SQLException e) {
             e.printStackTrace();
-            player.sendMessage("§cError occurred while withdrawing funds.");
+            player.getPlayer().sendMessage("§cError occurred while withdrawing funds.");
         }
     }
 
@@ -172,11 +180,11 @@ public class BankDB {
      * Retrieves the current bank balance for the given player and coin type.
      *
      * @param conn     The SQL connection.
-     * @param player   The player.
-     * @param coinType The coin type being queried.
-     * @return The balance as a double.
+     * @param player   The player (online or offline).
+     * @param coinType The coin type being queried (currently unused, reserved for future).
+     * @return The balance as a double, or 0.0 if not found or on error.
      */
-    public static double getBankBalance(Connection conn, Player player, String coinType) {
+    public static double getBankBalance(Connection conn, OfflinePlayer player, String coinType) {
         String uuid = player.getUniqueId().toString();
         String query = "SELECT balance FROM currency_bank WHERE uuid = ?;";
 
@@ -188,7 +196,9 @@ public class BankDB {
                 }
             }
         } catch (Exception e) {
-            player.sendMessage("§cFailed to fetch bank balance.");
+            if (player.isOnline()) {
+                player.getPlayer().sendMessage("§cFailed to fetch bank balance.");
+            }
             e.printStackTrace();
         }
 
