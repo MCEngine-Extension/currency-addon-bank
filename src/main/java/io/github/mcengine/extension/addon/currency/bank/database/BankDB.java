@@ -13,7 +13,7 @@ import java.sql.*;
  * <ul>
  *     <li>Create required bank and history tables</li>
  *     <li>Deposit and withdraw currency for both online and offline players</li>
- *     <li>Fetch bank balances</li>
+ *     <li>Fetch bank balances per coin type</li>
  * </ul>
  */
 public class BankDB {
@@ -21,9 +21,9 @@ public class BankDB {
     /**
      * Creates the required database tables for the bank system if they do not already exist.
      * <p>
-     * Tables created:
+     * Tables:
      * <ul>
-     *     <li><b>currency_bank</b> — Stores player balances and interest metadata.</li>
+     *     <li><b>currency_bank</b> — Stores player balances per coin type and interest metadata.</li>
      *     <li><b>currency_bank_history</b> — Logs deposits and withdrawals with coin and change type.</li>
      * </ul>
      *
@@ -34,9 +34,11 @@ public class BankDB {
         String sql1 = "CREATE TABLE IF NOT EXISTS currency_bank (" +
                 "bank_id INTEGER PRIMARY KEY AUTOINCREMENT, " +
                 "uuid VARCHAR(36) NOT NULL, " +
+                "coin_type TEXT CHECK(coin_type IN ('coin', 'copper', 'silver', 'gold')) NOT NULL, " +
                 "balance DOUBLE DEFAULT 0.0, " +
                 "interest_rate DOUBLE DEFAULT 0.0, " +
-                "last_interest_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP" +
+                "last_interest_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
+                "UNIQUE(uuid, coin_type)" +
                 ");";
 
         String sql2 = "CREATE TABLE IF NOT EXISTS currency_bank_history (" +
@@ -60,12 +62,11 @@ public class BankDB {
     }
 
     /**
-     * Deposits a specified amount of currency to a player's bank account.
-     * This works for both online and offline players.
+     * Deposits a specified amount of currency to a player's bank account for the given coin type.
      *
      * @param conn     The database connection.
-     * @param player   The player (can be offline).
-     * @param coinType The type of coin to deposit (e.g., "coin", "copper").
+     * @param player   The player (online or offline).
+     * @param coinType The type of coin to deposit (e.g., "coin", "silver").
      * @param amount   The amount to deposit.
      */
     public static void deposit(Connection conn, OfflinePlayer player, String coinType, double amount) {
@@ -73,10 +74,11 @@ public class BankDB {
         MCEngineCurrencyCommon.getApi().minusCoin(player.getUniqueId(), coinType, amount);
 
         try {
-            boolean exists = false;
-            String checkSql = "SELECT 1 FROM currency_bank WHERE uuid = ? LIMIT 1;";
+            boolean exists;
+            String checkSql = "SELECT 1 FROM currency_bank WHERE uuid = ? AND coin_type = ? LIMIT 1;";
             try (PreparedStatement stmt = conn.prepareStatement(checkSql)) {
                 stmt.setString(1, uuid);
+                stmt.setString(2, coinType);
                 try (ResultSet rs = stmt.executeQuery()) {
                     exists = rs.next();
                 }
@@ -84,16 +86,18 @@ public class BankDB {
 
             if (exists) {
                 try (PreparedStatement update = conn.prepareStatement(
-                        "UPDATE currency_bank SET balance = balance + ? WHERE uuid = ?;")) {
+                        "UPDATE currency_bank SET balance = balance + ? WHERE uuid = ? AND coin_type = ?;")) {
                     update.setDouble(1, amount);
                     update.setString(2, uuid);
+                    update.setString(3, coinType);
                     update.executeUpdate();
                 }
             } else {
                 try (PreparedStatement insert = conn.prepareStatement(
-                        "INSERT INTO currency_bank (uuid, balance) VALUES (?, ?);")) {
+                        "INSERT INTO currency_bank (uuid, coin_type, balance) VALUES (?, ?, ?);")) {
                     insert.setString(1, uuid);
-                    insert.setDouble(2, amount);
+                    insert.setString(2, coinType);
+                    insert.setDouble(3, amount);
                     insert.executeUpdate();
                 }
             }
@@ -121,23 +125,21 @@ public class BankDB {
 
     /**
      * Withdraws a specified amount of currency from a player's bank account to their wallet.
-     * Only works for online players.
      *
      * @param conn     The database connection.
      * @param player   The player (must be online).
-     * @param coinType The type of coin to withdraw (e.g., "coin", "copper").
+     * @param coinType The type of coin to withdraw.
      * @param amount   The amount to withdraw.
      */
     public static void withdraw(Connection conn, OfflinePlayer player, String coinType, double amount) {
-        if (!player.isOnline() || player.getPlayer() == null) {
-            return;
-        }
+        if (!player.isOnline() || player.getPlayer() == null) return;
 
         String uuid = player.getUniqueId().toString();
 
         try (PreparedStatement stmt = conn.prepareStatement(
-                "SELECT balance FROM currency_bank WHERE uuid = ?;")) {
+                "SELECT balance FROM currency_bank WHERE uuid = ? AND coin_type = ?;")) {
             stmt.setString(1, uuid);
+            stmt.setString(2, coinType);
 
             try (ResultSet rs = stmt.executeQuery()) {
                 if (!rs.next()) {
@@ -152,9 +154,10 @@ public class BankDB {
                 }
 
                 try (PreparedStatement update = conn.prepareStatement(
-                        "UPDATE currency_bank SET balance = balance - ? WHERE uuid = ?;")) {
+                        "UPDATE currency_bank SET balance = balance - ? WHERE uuid = ? AND coin_type = ?;")) {
                     update.setDouble(1, amount);
                     update.setString(2, uuid);
+                    update.setString(3, coinType);
                     update.executeUpdate();
                 }
 
@@ -181,15 +184,16 @@ public class BankDB {
      *
      * @param conn     The SQL connection.
      * @param player   The player (online or offline).
-     * @param coinType The coin type being queried (currently unused, reserved for future).
+     * @param coinType The coin type being queried.
      * @return The balance as a double, or 0.0 if not found or on error.
      */
     public static double getBankBalance(Connection conn, OfflinePlayer player, String coinType) {
         String uuid = player.getUniqueId().toString();
-        String query = "SELECT balance FROM currency_bank WHERE uuid = ?;";
+        String query = "SELECT balance FROM currency_bank WHERE uuid = ? AND coin_type = ?;";
 
         try (PreparedStatement stmt = conn.prepareStatement(query)) {
             stmt.setString(1, uuid);
+            stmt.setString(2, coinType);
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
                     return rs.getDouble("balance");
