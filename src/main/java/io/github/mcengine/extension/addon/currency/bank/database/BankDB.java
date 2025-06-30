@@ -167,4 +167,31 @@ public class BankDB {
             player.sendMessage("§cError occurred while withdrawing funds.");
         }
     }
+
+    /**
+     * Retrieves the current bank balance for the given player and coin type.
+     *
+     * @param conn     The SQL connection.
+     * @param player   The player.
+     * @param coinType The coin type being queried.
+     * @return The balance as a double.
+     */
+    public static double getBankBalance(Connection conn, Player player, String coinType) {
+        String uuid = player.getUniqueId().toString();
+        String query = "SELECT balance FROM currency_bank WHERE uuid = ?;";
+
+        try (PreparedStatement stmt = conn.prepareStatement(query)) {
+            stmt.setString(1, uuid);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getDouble("balance");
+                }
+            }
+        } catch (Exception e) {
+            player.sendMessage("§cFailed to fetch bank balance.");
+            e.printStackTrace();
+        }
+
+        return 0.0;
+    }
 }
