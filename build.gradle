@@ -57,7 +57,7 @@ dependencies {
 
     compileOnly 'org.spigotmc:spigot-api:1.21.6-R0.1-SNAPSHOT'
 
-    compileOnly 'com.cronutils:cron-utils:9.1.5'
+    compileOnly 'com.cronutils:cron-utils:9.2.1'
 }
 
 shadowJar {
