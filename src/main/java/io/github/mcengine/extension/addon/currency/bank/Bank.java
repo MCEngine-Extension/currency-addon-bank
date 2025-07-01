@@ -1,8 +1,8 @@
 package io.github.mcengine.extension.addon.currency.bank;
 
 import io.github.mcengine.api.currency.extension.addon.IMCEngineCurrencyAddOn;
-import io.github.mcengine.api.mcengine.MCEngineApi;
-import io.github.mcengine.api.mcengine.extension.addon.MCEngineAddOnLogger;
+import io.github.mcengine.api.core.MCEngineApi;
+import io.github.mcengine.api.core.extension.addon.MCEngineAddOnLogger;
 import io.github.mcengine.common.currency.MCEngineCurrencyCommon;
 import io.github.mcengine.extension.addon.currency.bank.command.BankCommand;
 import io.github.mcengine.extension.addon.currency.bank.database.BankDB;
@@ -92,7 +92,6 @@ public class Bank implements IMCEngineCurrencyAddOn {
         MCEngineApi.checkUpdate(
             plugin,
             logger.getLogger(),
-            "[AddOn] [MCEngineBank] ",
             "github",
             "MCEngine-Extension",
             "currency-addon-bank",

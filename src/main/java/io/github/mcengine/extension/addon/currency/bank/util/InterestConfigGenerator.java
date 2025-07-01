@@ -1,6 +1,6 @@
 package io.github.mcengine.extension.addon.currency.bank.util;
 
-import io.github.mcengine.api.mcengine.extension.addon.MCEngineAddOnLogger;
+import io.github.mcengine.api.core.extension.addon.MCEngineAddOnLogger;
 import org.bukkit.plugin.Plugin;
 
 import java.io.File;
